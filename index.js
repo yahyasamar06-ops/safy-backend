@@ -5,7 +5,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// دالة مساعدة لتحليل التعليق بالذكاء الاصطناعي
 async function analyzeWithAI(text, threshold = 60, blockedWords = []) {
   const lower = text.toLowerCase();
   const matched = blockedWords.find((w) => lower.includes(w.toLowerCase()));
@@ -75,15 +74,17 @@ app.post('/analyze', async (req, res) => {
   }
 });
 
-// التحقق من Webhook ديال Meta
+// التحقق من Webhook ديال Meta (نص صافي text/plain)
 app.get('/webhook/meta', (req, res) => {
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
+  console.log('Meta verify ping:', { mode, token, challenge });
   if (mode === 'subscribe' && token === (process.env.META_VERIFY_TOKEN || 'safy_verify_123')) {
-    return res.status(200).send(challenge);
+    res.setHeader('Content-Type', 'text/plain');
+    return res.status(200).end(String(challenge));
   }
-  res.sendStatus(403);
+  return res.sendStatus(403);
 });
 
 // استقبال تعليقات Instagram الحقيقية وإخفاء السلبي منها أوتوماتيكياً
