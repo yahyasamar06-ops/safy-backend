@@ -41,7 +41,7 @@ Reply ONLY with valid JSON (no markdown) in this exact format:
 {"negative": true or false, "score": 0 to 100, "reason": "short 3-5 word reason"}`;
 
     const aiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flas:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
