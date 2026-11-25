@@ -40,7 +40,7 @@ Reply ONLY with valid JSON (no markdown) in this exact format:
 {"negative": true or false, "score": 0 to 100, "reason": "short 3-5 word reason"}`;
 
     // تجربة الموديل الرئيسي، وإلا كان عامر يدوز للاحتياطي
-    const models = ['gemini-3.8-flash', 'gemini-2.5-flash-lite'];
+    const models = ['gemini-3.8-flash', 'gemini-3.5-flash-lite'];
     let data = null;
     let lastError = 'AI API failed';
 
