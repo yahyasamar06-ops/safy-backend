@@ -53,6 +53,10 @@ Reply ONLY with valid JSON (no markdown) in this exact format:
     );
 
     const data = await aiRes.json();
+        if (!aiRes.ok) {
+      return res.status(502).json({ error: data?.error?.message || 'AI API failed' });
+    }
+
     const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
     const parsed = JSON.parse(rawText);
 
