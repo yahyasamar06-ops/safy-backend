@@ -68,7 +68,7 @@ app.get('/', (req, res) => {
 app.get('/auth/meta', (req, res) => {
   const appId = process.env.META_APP_ID;
   if (!appId) return res.status(500).send('META_APP_ID is missing in Vercel');
-  const scope = 'pages_show_list,pages_read_engagement,instagram_basic,instagram_manage_comments';
+  const scope = 'pages_show_list,pages_read_engagement,pages_manage_engagement';
   const authUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${scope}&response_type=code`;
   res.redirect(authUrl);
 });
@@ -88,15 +88,13 @@ app.get('/auth/meta/callback', async (req, res) => {
     }
 
     const pagesRes = await fetch(
-      `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token,instagram_business_account{id,username}&access_token=${tokenRes.access_token}`
+      `https://graph.facebook.com/v21.0/me/accounts?fields=id,name,access_token&access_token=${tokenRes.access_token}`
     ).then((r) => r.json());
 
-    const page = (pagesRes.data || []).find((p) => p.instagram_business_account) || (pagesRes.data || [])[0];
+    const page = (pagesRes.data || [])[0];
     if (page?.access_token) connectedPageToken = page.access_token;
 
-    const igName = page?.instagram_business_account?.username
-      ? `@${page.instagram_business_account.username}`
-      : (page?.name || 'Your Meta Account');
+    const accountName = page?.name || 'Your Meta Page';
 
     res.send(`<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -104,7 +102,7 @@ app.get('/auth/meta/callback', async (req, res) => {
 <style>body{font-family:system-ui,sans-serif;background:#0B1528;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px;text-align:center}.card{background:#142644;border:1px solid #264170;padding:32px;border-radius:20px;max-width:420px}h1{color:#10B981;font-size:22px;margin:0 0 10px}p{color:#cbd5e1;font-size:14px;line-height:1.5}</style>
 </head><body><div class="card">
 <h1>✓ Connected to Safy AI</h1>
-<p>Account <strong>${igName}</strong> is now connected. Safy AI protection is active for incoming comments!</p>
+<p>Account <strong>${accountName}</strong> is now connected. Safy AI protection is active for incoming comments!</p>
 </div></body></html>`);
   } catch (err) {
     res.status(500).send(`Error: ${err.message}`);
@@ -140,13 +138,13 @@ app.post('/webhook/meta', async (req, res) => {
     const entries = req.body?.entry || [];
     for (const entry of entries) {
       for (const change of entry.changes || []) {
-        if (change.field === 'comments' && change.value?.text) {
-          const commentId = change.value.id;
-          const text = change.value.text;
+        const commentId = change.value?.comment_id || change.value?.id;
+        const text = change.value?.message || change.value?.text;
+        if (commentId && text) {
           const result = await analyzeWithAI(text, 60, ['scam', 'khayb', 'zbel', 'nassab']);
           if (result.negative && token) {
             await fetch(
-              `https://graph.facebook.com/v21.0/${commentId}?hide=true&access_token=${token}`,
+              `https://graph.facebook.com/v21.0/${commentId}?is_hidden=true&access_token=${token}`,
               { method: 'POST' }
             );
           }
