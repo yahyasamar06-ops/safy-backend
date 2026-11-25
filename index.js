@@ -29,7 +29,6 @@ app.post('/analyze', async (req, res) => {
       });
     }
 
-    // إرسال التعليق للذكاء الاصطناعي لتحليل السياق (دارجة، عربية، فرنسية، إنجليزية)
     const apiKey = process.env.AI_API_KEY;
     if (!apiKey) {
       return res.status(500).json({ error: 'AI_API_KEY is missing in server settings' });
@@ -40,24 +39,36 @@ Analyze this comment (it may be in Moroccan Darija, Arabic, French, or English):
 Reply ONLY with valid JSON (no markdown) in this exact format:
 {"negative": true or false, "score": 0 to 100, "reason": "short 3-5 word reason"}`;
 
-    const aiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: 'application/json' }
-        })
-      }
-    );
+    // تجربة الموديل الرئيسي، وإلا كان عامر يدوز للاحتياطي
+    const models = ['gemini-3.8-flash', 'gemini-2.5-flash-lite'];
+    let data = null;
+    let lastError = 'AI API failed';
 
-    const data = await aiRes.json();
-        if (!aiRes.ok) {
-      return res.status(502).json({ error: data?.error?.message || 'AI API failed' });
+    for (const model of models) {
+      const aiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: 'application/json' }
+          })
+        }
+      );
+      const json = await aiRes.json();
+      if (aiRes.ok && json?.candidates?.[0]?.content?.parts?.[0]?.text) {
+        data = json;
+        break;
+      }
+      lastError = json?.error?.message || lastError;
     }
 
-    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    if (!data) {
+      return res.status(502).json({ error: lastError });
+    }
+
+    const rawText = data.candidates[0].content.parts[0].text;
     const parsed = JSON.parse(rawText);
 
     const score = Number(parsed.score) || 0;
